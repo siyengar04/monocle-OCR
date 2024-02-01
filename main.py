@@ -51,7 +51,7 @@ async def detect():
     # Convert the image to gray scale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # Performing OCR
-    text = pytesseract.image_to_string(gray, lang='eng')
+    text = pytesseract.image_to_string(gray, config='--psm 3')
     
     if text:
         print("Detected text:")
@@ -71,6 +71,15 @@ async def check(data):
     except ValueError:
         return False
 
+async def display_text_on_monocle(detected_text):
+    command_to_display_text = f'''
+import display
+text = display.Text('{detected_text}', 100, 0, display.WHITE, justify=display.TOP_LEFT)
+display.show(text)
+'''
+    async with Monocle() as m:
+        await m.send_command(command_to_display_text)
+
 async def main():
     while True:
         data = await get_image()
@@ -79,13 +88,10 @@ async def main():
         jpgImg = img.convert('RGB')
         jpgImg.save('output.jpg')
         img_data = await detect()
-        checkImg = await check(img_data)
-        if checkImg:
-            webbrowser.open(img_data)
-            img_data = urlparse(img_data).netloc
-            await display(img_data)
-        else:
-            await display(img_data)
+        detected_text = await detect()
+        await display_text_on_monocle(detected_text)
+        ev.clear()
+        await display(img_data)
         ev.clear()
 
 asyncio.run(main())
